@@ -21,8 +21,9 @@ boolean falling = false;
 boolean forOldAlt = true;
 boolean checkAlt = false;
 char sampleCode = '\0';
-boolean sampleStatus = false;
+boolean sampled = false;
 char rbStatus = false;
+int rbTransmissions, rbRecives;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -72,25 +73,25 @@ void loop() {
 
     if((millis() / 1000) % 30 == 0) {
       Wire.beginTransmission(8);
+      Wire.write("LAT: ");
+      message.remove(0); // clear message
       message += GPS.latitudeDegrees;
       Wire.write(message.c_str());
-      Wire.write(' ');
+      Wire.write(", ");
+      Wire.write("LON: ");
       message.remove(0); // clear message
       message += GPS.longitudeDegrees;
       Wire.write(message.c_str());
-      Wire.write(' ');
-      message.remove(0); // clear message
-      message += GPS.altitude;
-      Wire.write(message.c_str());
-      Wire.write(' ');
-      message.remove(0); // clear message
-      Wire.write(falling);
-      Wire.write(' ');
+      Wire.write(", ");
+      Wire.write("FLIGHT STAGE: ");
+      Wire.write((falling)? "DESC, " : "ASC, ");
+      Wire.write("AS STAGE: ");
       Wire.write(sampleCode);
-      Wire.write(' ');
-      Wire.write(sampleStatus);
+      Wire.write(", ");
+      Wire.write("AS STATUS: ");
+      Wire.write((sampled)? "COMPLETE" : "SAMPLING");
       Wire.write('\0');
-      Wire.endTransmission();
+      Wire.endTransmission(); 
     }
 
     // for Altitude Average
@@ -123,8 +124,8 @@ void loop() {
           }
         } else {
           if(average < altBreakPoint[abpOffset]) {
-            Wire.beginTransmission(9);
             char sampleCode = '0' + abpOffset;
+            Wire.beginTransmission(9);
             Wire.write(sampleCode);
             Wire.endTransmission();
             abpOffset++;
@@ -138,19 +139,21 @@ void loop() {
     
   }
 
-  Wire.requestFrom(8, 1);
+  Wire.requestFrom(8, 3);
   while(Wire.available()) {
     rbStatus = Wire.read();
+    rbTransmissions = Wire.read();
+    rbRecives = Wire.read();
   }
   Wire.requestFrom(9, 2);
   while(Wire.available()) {
     sampleCode = Wire.read();
-    sampleStatus = Wire.read();
+    sampled = Wire.read();
   }
 
   Serial.print(rbStatus);
   Serial.print(sampleCode);
-  Serial.println(sampleStatus);
+  Serial.println(sampled);
   t = millis() - t;
   Serial.print("Loop Time: ");
   Serial.print(t);
